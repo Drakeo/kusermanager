@@ -97,9 +97,9 @@ case "$?" in
 esac;
 # A terrible hack but works if people use the wrong letters not going to spend time on this add or remove a group from user
     if [ "$grpad" = "add" ]; then 
-gpasswd -a  $modgrp $grpad     
+gpasswd -a  $modgrp $modname    
     elif [ "$grpad" = "delete" ]; then
-gpasswd -d  $modgrp $grpad  
+gpasswd -d  $modgrp $modname
     else
     echo "Unable to use ->$grpad<- $ERROR" > /tmp/kusers/error
 # displays error if not add or delete
