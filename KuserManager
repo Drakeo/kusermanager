@@ -1,0 +1,211 @@
+#!/bin/bash
+
+# ERROR used for variable = 4
+ERROR="please type lower case add or delete again"
+#ERROR2 used for VARIABLE = 5
+ERROR2="please type lower case system default number over 1000" 
+
+kdialog --title "KuserManager"  --icon "yast-sysconfig.svg" --msgbox  "<h1>Select A User,Group To Add Remove,Modify</h1>" 
+rk -rf /tmp/kusers
+mkdir -p /tmp/kusers
+set e
+while true ; do
+kusermgr=$(kdialog  --geometry 550x270+270+270  --title "KuserManger"  --icon "yast-sysconfig.svg" --radiolist "User Manager:" \
+		1 "System Groups                      Select To Show System Groups And Users" on  \
+		2 "System Users                         Select To Show Syestem Users Accounts " on \
+		3 "User System Groups           Select To Show A Users Groups" on \
+		4 "Modify A Users Groups      Select To Modify Users Groups" on \
+		5 "Add A Group                          Select To Add Groups" on \
+		6 "Remove A Group                  Select Remove Groups" on \
+		7 "About User Manager           About User Manager" off;);
+
+if [ "$?" = 0 ]; then
+# Start kusermgr=1 list sytem groups and users.
+	if [ "$kusermgr" = 1 ]; then
+	    getent group > /tmp/kusers/sysgroups
+		kdialog --geometry 300x300+300+300 --title "KuserManager" --icon "user-group-new.svg" --textbox /tmp/kusers/sysgroups
+
+#////////////////////////////////////////////////////////////////////////////#  Start kusermgr=2////////////////////////////////////////////////////////////
+#  Start kusermgr=2 show the users  on the system
+	elif [ "$kusermgr" = 2 ]; then
+	    getent passwd | grep -E '^([^:]*:){2}([1-4][0-9]{3}|5000):' | cut -d: -f1-3 > /tmp/kusers/SysUsers 
+	    kdialog --geometry 300x300+300+300  --title "Display Users" --icon "user-group-new.svg" --textbox /tmp/kusers/SysUsers
+
+#////////////////////////////////////////////////////////////////////////////# Star kusermgr=3////////////////////////////////////////////////////////////
+# Star kusermgr=3 get the name of the user we want to display
+	elif [ "$kusermgr" = 3 ]; then
+sysgroup=$(kdialog  --geometry 500x200+200+200 --title  "Display A Users" --icon "user-group-new.svg" " User name" --inputbox " User name"); 
+case "$?" in
+	0)
+		;;
+	1)
+		kdialog --sorry "YOU CHOSE CANCEL";
+		exit
+		;;
+	*)
+		kdialog --error "ERROR";
+		;;
+esac;
+# create the kusermgr varuser from kusermgr=3
+varuser=$(id -u $sysgroup)
+    echo "$sysgroup | Users ID | $varuser"  > /tmp/kusers/MyGroups;
+	id -nG $sysgroup  > /tmp/kusers/usersgroup.txt;
+    awk ' { for(i=1;i<=NF;i++)
+          { print $i }
+        } ' /tmp/kusers/usersgroup.txt >> /tmp/kusers/MyGroups;
+# Display variable=3 users groups
+		kdialog --geometry 400x300+300+300 --title  "This Users Groups" --icon "user.png" --textbox /tmp/kusers/MyGroups;
+
+#////////////////////////////////////////////////////////////////////////////# Start kusermgr=4////////////////////////////////////////////////////////////
+# Start kusermgr=4 get users name  to modify his group this is  used by $varible1 
+	elif [ "$kusermgr" = 4 ]; then
+# This creates $varible1 inside of kusermgr=4  is the user we select
+modgrp=$(kdialog  --geometry 500x200+200+200 --title "Modify A users Group" --icon "user.png" " User name" --inputbox "User name"); 
+case "$?" in
+	0)
+		;;
+	1)
+		kdialog --sorry "YOU CHOSE CANCEL";
+		;;
+	*)
+		kdialog --error "ERROR";
+		;;
+esac;
+# this creates variable2 inside of kusermgr=4 creates  kusermgr A or D add or delete
+	    grpad=$(kdialog  --geometry 500x200+200+200 --title "Add or Delete From A Group" --icon "user-group-new.svg" "Lower case type add or delete" --inputbox "add or delete"); 
+case "$?" in
+	0)
+		;;
+	1)
+		kdialog --sorry "YOU CHOSE CANCEL";
+		;;
+	*)
+		kdialog --error "ERROR";
+		;;
+esac;
+# this creates modname inside of kusermgr=4 creates the name of the group to modify
+ modname=$(kdialog  --geometry 500x200+200+200 --title "Users Name to Modify" "Type the name of the group" --icon "user-group-new.svg" --inputbox "Type the name of the group"); 
+case "$?" in
+	0)
+		;;
+	1)
+		kdialog --sorry "YOU CHOSE CANCEL";
+		;;
+	*)
+		kdialog --error "ERROR";
+		;;
+esac;
+# A terrible hack but works if people use the wrong letters not going to spend time on this add or remove a group from user
+    if [ "$grpad" = "add" ]; then 
+gpasswd -a  $modgrp $grpad     
+    elif [ "$grpad" = "delete" ]; then
+gpasswd -d  $modgrp $grpad  
+    else
+    echo "Unable to use ->$grpad<- $ERROR" > /tmp/kusers/error
+# displays error if not add or delete
+    kdialog --geometry 300x300+300+300 --title "ERROR" --icon "user-group-new.svg" --textbox /tmp/kusers/error
+    fi 
+
+#////////////////////////////////////////////////////////////////////////////# Start kusermgr" = 5////////////////////////////////////////////////////////////
+# Start kusermgr" = 5 
+	elif [ "$kusermgr" = 5 ]; then
+# this creates mkgroup inside of kusermgr=5 creates the name of the group to modify
+ mkgroup=$(kdialog  --geometry 500x200+200+200 --title "KuserManager" "Type the name of the group" --icon "user-group-new.svg" --inputbox "Type the name of the group"); 
+case "$?" in
+	0)
+		;;
+	1)
+		kdialog --sorry "YOU CHOSE CANCEL";
+		;;
+	*)
+		kdialog --error "ERROR";
+		;;
+esac;
+cat > /tmp/kusers/grouphelp <<EOF
+Close window to ignore this message
+Three things to do
+1# Sytem Group 
+2# User Group With or without GID
+3# Sytem group GID will be assigned by the system. 
+If "$mkgroup" is a new System group type in lower case "system".
+If "$mkgroup" Users Group the next GID will be given type "default"
+It is better if you asign "$mkgroup" a GID between 1000 and 1500
+OR between 1100 to 1500 this has worked best for me.
+Just type a number you like over 1100 
+Example 
+Sytem type lower case "system"
+Default group system will assign type "default"
+If GID is used for a group type a number only example "1100"
+EOF
+kdialog --geometry 500x300+300+300 --title  "This Users Groups" --icon "user-group-new.svg" --textbox /tmp/kusers/grouphelp;
+
+#start variable7 inside kusermgr" = 5 
+ sdggrp=$(kdialog  --geometry 500x200+200+200 --title "KuserManager" "Lower case type system default or a GID number" --icon "user-group-new.svg" --inputbox "Lower case type system default or a GID number");
+if [ "$sdggrp" = "system" ]; then
+groupadd -r $mkgroup  
+elif [ "$sdggrp" = "default" ]; then
+groupadd $mkgroup
+elif [ "$sdggrp" -gt "1000" ]; then
+groupadd -g $sdggrp $mkgroup
+else
+    echo "Unable to use ->$sdggrp<- $ERROR2" > /tmp/kusers/error2
+# displays error if not add or delete
+    kdialog --geometry 200x300+300+300 --textbox /tmp/kusers/error2
+fi
+#////////////////////////////////////////////////////////////////////////////# Start kusermgr" = 6 ////////////////////////////////////////////////////////////
+# Start kusermgr" = 6 
+	elif [ "$kusermgr" = 6 ]; then
+# creat rmgpnm inside kusermgr" = 6 
+rmgpnm=$(kdialog  --geometry 500x200+200+200 --title "KuserManager" "Type the name of the group" --icon "user-group-new.svg" --inputbox "Type the name of the group");
+ case "$?" in
+	0)
+		;;
+	1)
+		kdialog --sorry "YOU CHOSE CANCEL";
+		;;
+	*)
+		kdialog --error "ERROR";
+		;;
+esac;
+GETUSR=$(getent group | grep $rmgpnm)
+cat > /tmp/kusers/deletegroup <<EOF
+Close window to ignore this message
+Notify these users that $GETUSR has been removed
+!!!! You Must Remove all Users from $rmgpnm First !!!!!
+If removing $rmgpnm remove users from $rmgpnm
+EOF
+kdialog --geometry 500x300+300+300 --title  "This Users Groups" --icon "user-group-delete.svg" --textbox /tmp/kusers/deletegroup;
+GRPNAME=$(getent group | grep $rmgpnm | cut -d: -f1)
+if [ "$rmgpnm" = "$GRPNAME" ]; then
+groupdel $rmgpnm
+  else
+ cat > /tmp/kusers/grouperror <<EOF
+$rmgpnm dosen't exist please check your spelling 
+please check your groups
+EOF
+kdialog --geometry 500x300+300+300 --title  "This Users Groups" --icon "user-group-delete.svg" --textbox /tmp/kusers/grouperror;
+ fi
+ 
+#////////////////////////////////////////////////////////////////////////////# Start kusermgr" = 7////////////////////////////////////////////////////////////
+# Start kusermgr" = 7
+ elif [ "$kusermgr" = 7 ]; then
+ echo start over
+cat > /tmp/kusers/Kusermanager <<EOF
+KuserManager
+Version 0.0.1
+licenced under the GPL3
+Use at your own risk
+Simple kdilaog that allows you to display
+and modify your systems Users and Groups
+EOF
+kdialog --geometry 500x300+300+300 --title  "This Users Groups" --icon "user-group-new.svg" --textbox /tmp/kusers/Kusermanager;
+	else
+		kdialog --error "ERROR";
+	fi;
+elif [ "$?" = 1 ]; then
+	kdialog --sorry "YOU CHOSE CANCEL";
+	exit;
+else
+	kdialog --error "ERROR";
+fi;
+done
